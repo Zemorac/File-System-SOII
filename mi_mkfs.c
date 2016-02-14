@@ -47,5 +47,5 @@ int main(int argc, char **argv){
 	//Cerramos el dispositivo.
 	bumount();
 	
-	printf("Dispositivo cerrado con éxito.\n");
+	printf("Dispositivo desmontado con éxito.\n");
 }
