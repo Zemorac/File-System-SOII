@@ -1,0 +1,39 @@
+File-System-SOII
+
+OBJETIVO: Creación de un simple sistema de ficheros UNIX. Se implementa el
+módulo de gestión de ficheros del sistema operativo y la interacción de procesos
+de usuarios.
+
+COMPOSICIÓN:
+
+	- Un conjunto de bibliotecas que proporcionan las primitivas de acceso al sistema de ficheros y gestionarlo.
+	- Un programa mi_mkfs para crear el fichero que simula al disco duro.
+	- Programas que simulan las distintas funciones sobre el sistema de ficheros.
+	- Programa simulador que crea algunos procesos de prueba que manejan ficheros de modo que
+	  se pueda comprobar el correcto funcionamiento del sistema de ficheros.
+
+Proyecto implementado en C con fines educativos para la asignatura de sistemas operativos II.
+
+Autor: Zemorac
+Fecha: 10/02/16
+-------------------------------------------------------------------------------------- 
+
+File-System-SOII
+
+OBJETIVES: Creation of a simple UNIX file system. It implements the 
+module managment and interaction of user's process. 
+
+COMPOSITION:
+
+	- A libraries set that provides access primitives to file system and manage it.
+	- A program named mi_mkfs for create the file that simulates the hard disk.
+	- Programs that simulate diferents functions about the file system.
+	- Simulator program that creates some test processes, which manage files, 
+	  so we can check the proper working of file system.
+
+Project implemented in C with education purpose for operative systems II.
+
+Author: Zemorac
+Date: 10/02/16
+
+
