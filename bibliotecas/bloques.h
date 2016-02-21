@@ -3,7 +3,7 @@
  * Descripción: Cabecera con la declaración de las funciones y constantes
  * básicas del sistema de ficheros.
  * 
- * Autor: Zemorac
+  * Autor: Zemorac 
  * Fecha: 10/02/16
  * 
  * */

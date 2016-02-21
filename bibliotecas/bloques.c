@@ -3,7 +3,7 @@
  * Descripción: Descripción de las funciones básicas de E/S de bloques
  * del sistema de ficheros.
  * 
- * Autor: Zemorac
+ * Autor: Zemorac 
  * Fecha: 10/02/16
  * 
  * */
@@ -29,9 +29,9 @@ int bmount(const char *camino){
 	 * 
 	 * */
 	if((descriptor = open(camino,O_RDWR|O_CREAT, 0666))<0){
-		printf("Se ha producido un error al abrir el dispositivo.\n");
+		printf("bmount: Se ha producido un error al abrir el dispositivo.\n");
 	}
-	
+
 	return descriptor;
 }
 
@@ -44,11 +44,9 @@ int bmount(const char *camino){
 int bumount(){
 	
 	if(close(descriptor)<0){
-		printf("Se ha producido un error al cerrar el dispositivo.\n");
+		printf("bumount: Se ha producido un error al cerrar el dispositivo.\n");
 		return -1;
 	}
-	
-	printf("El dispositivo se ha cerrado correctamente.\n");
 	
 	return 0;
 }
@@ -76,7 +74,7 @@ int bumount(){
 	 lseek(descriptor,desplazamiento, SEEK_SET);
 	 //Escribimos = llamada al sistema
 	 if(write(descriptor,buf,BLOCKSIZE)<0){
-		printf("Se ha producido un error en la escritura de un bloque en el dispositivo.\n");
+		printf("bwrite: Se ha producido un error en la escritura de un bloque en el dispositivo.\n");
 		
 		return -1;
 	 }
@@ -102,7 +100,7 @@ int bread(unsigned int nbloque, void *buf){
 	lseek(descriptor,desplazamiento, SEEK_SET);
 	//Leemos = llamada al sistema. 
 	if(read(descriptor,buf, BLOCKSIZE)<0){
-		printf("Se ha producido un error en la lectura de un bloque en el dispositivo.\n");
+		printf("bread: Se ha producido un error en la lectura de un bloque en el dispositivo.\n");
 		
 		return -1;
 	}

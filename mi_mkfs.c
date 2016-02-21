@@ -10,42 +10,53 @@
 #include <stdlib.h>
 #include <string.h> //Para memset
 #include "./bibliotecas/bloques.h"
+#include "./bibliotecas/ficheros_basico.h"
 
 int main(int argc, char **argv){
 	
 	if(argc!=3){
-		printf("\n Error debe escribir: $ ./mi_mkfs <nombre_fichero> <cantidad_bloques>\n");
+		
+		printf("\nmi_mkfs: Error debe escribir: $ ./mi_mkfs <nombre_fichero> <cantidad_bloques>\n");
 		
 		return -1;
 	}
 	
 	//cantidad_bloques
 	unsigned int numBloques = atoi(argv[2]);
-	
-	
+	//cantidad_inodos
+	unsigned int ninodos = numBloques/4;
+
 	if(numBloques==0){
-		printf("El nº de bloques debe ser mayor a 0.\n");
+		printf("\nmi_mkfs: El nº de bloques debe ser mayor a 0.\n");
 		
 		return -1;
 	}
-	
-	printf("OK\n");	
-	unsigned char buf[BLOCKSIZE];
+		
+	/*unsigned char buf[BLOCKSIZE];
 	//Rellenamos de 0's el buffer.
-	memset(buf,0,BLOCKSIZE);
+	memset(buf,0,BLOCKSIZE);*/
 	
 	//Montamos el dispositivo.
-	printf("Montando el dispositivo...\n");	
+	printf("\nmi_mkfs: Montando el dispositivo...\n");	
 	bmount(argv[1]);//nombre_fichero
-	printf("Realizando escritura...\n");
+	printf("\nmi_mkfs: El dispositivo se ha montado con éxito.\n");
+	printf("\nmi_mkfs: Realizando escritura...\n");
 		
-	//Escribimos todos los bloques en el dispositivo.
+	if(initSB(numBloques,ninodos)<0)return -1;
+	if(initMB()<0)return -1;
+	if(initAI(ninodos)<0)return -1;
+
+	/*//Escribimos todos los bloques en el dispositivo.
 	for(int i=0; i<numBloques; i++){
 		bwrite(i,buf);
 	}
-	
-	//Cerramos el dispositivo.
+	*/
+
+	//Desmontamos el dispositivo.
+	printf("\nmi_mkfs: Desmontando el dispositivo.\n");
 	bumount();
 	
-	printf("Dispositivo desmontado con éxito.\n");
+	printf("\nmi_mkfs: Dispositivo desmontado con éxito.\n");
+
+	return 0;
 }
