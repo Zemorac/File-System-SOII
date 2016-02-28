@@ -4,7 +4,7 @@
  * ficheros a utilizar. Declaración de funciones de la zona de metadatos
  * del sistema de ficheros.
  *
- * Autor: Zemorac
+ * Autor: Zemorac 
  * Fecha: 17/02/16
  * 
  * */
@@ -15,7 +15,9 @@
 
 #define posSB 0 //el superbloque se escribe en el primer bloque de nuestro FS
 #define T_INODO 128 //tamaño en bytes de un inodo
-#define tamSB 1;
+#define tamSB 1
+#define T_DIRECTOS 12
+#define T_INDIRECTOS 3
 
 struct SUPERBLOQUE{
 	unsigned int posPrimerBloqueMB; //Posición del primer bloque del mapa de bits
@@ -60,3 +62,10 @@ int tamAI (unsigned int ninodos);
 int initSB(unsigned int nbloques, unsigned int ninodos);
 int initMB();
 int initAI(unsigned int ninodos);
+int escribir_bit(unsigned int nbloque, unsigned int bit);
+unsigned char leer_bit(unsigned int nbloque);
+int reservar_bloque();
+int liberar_bloque(unsigned int nbloque);
+int escribir_inodo(struct INODO inodo, unsigned int ninodo);
+struct INODO leer_inodo(unsigned int ninodo);
+int reservar_inodo(unsigned char tipo, unsigned char permisos);

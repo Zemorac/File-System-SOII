@@ -2,7 +2,7 @@
  * 
  * Descripción: Crea el dispositivo (fichero) con el tamaño adecuado.
  * 
- * Autor: Zemorac
+ * Autor: Zemorac 
  * Fecha: 10/02/16
  * 
  * */
@@ -32,7 +32,8 @@ int main(int argc, char **argv){
 		return -1;
 	}
 		
-	/*unsigned char buf[BLOCKSIZE];
+	/*ETAPA 1:
+	unsigned char buf[BLOCKSIZE];
 	//Rellenamos de 0's el buffer.
 	memset(buf,0,BLOCKSIZE);*/
 	
@@ -46,7 +47,11 @@ int main(int argc, char **argv){
 	if(initMB()<0)return -1;
 	if(initAI(ninodos)<0)return -1;
 
-	/*//Escribimos todos los bloques en el dispositivo.
+	//Se escribe el directorio raíz = inodo raíz.
+	reservar_inodo('d',7);
+	
+	/*ETAPA 1:
+	//Escribimos todos los bloques en el dispositivo.
 	for(int i=0; i<numBloques; i++){
 		bwrite(i,buf);
 	}

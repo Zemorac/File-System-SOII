@@ -28,6 +28,8 @@ int main(int argc, char **argv){
 	struct SUPERBLOQUE sb;
 	struct INODO inodo;
 	unsigned char mb[BLOCKSIZE];
+	struct INODO inodos[BLOCKSIZE/T_INODO];
+	int j;
 
 	printf("\nleer_sf: Lectura del SUPERBLOQUE...\n\n");
 
@@ -40,6 +42,51 @@ int main(int argc, char **argv){
 	printf("cantInodosLibres: %i\n",sb.cantInodosLibres);
 	printf("totBloques: %i\n",sb.totBloques);
 	printf("totInodos: %i\n",sb.totInodos);
+
+	printf("\nleer_sf: Leyendo el MAPA DE BITS...\n");
+
+	printf("MAPA DE BITS:\n");
+	j=0;
+	for (int i = 0; i < sb.totBloques; ++i){
+		
+		printf("%i",leer_bit(i));
+		
+		if(j == (BLOCKSIZE*8)){//Para que escriba en bloques el tamaño del MAPA DE BITS.
+			printf("\n\n");
+			j=0;
+		}
+		
+		j++;
+	}
+
+	printf("\nleer_sf: Leyendo el ARRAY DE INODOS...\n");
+
+	j=0;
+	for (int i = 0; i < sb.totInodos; ++i){
+		
+		inodos[j]= leer_inodo(i);
+
+		if(j == (BLOCKSIZE/T_INODO) -1){
+
+			for (int k = 0; k < (BLOCKSIZE/T_INODO); ++k){
+
+				printf("\nNº INODO %i:\n",i);
+
+				printf("Tipo: %c\n",inodos[k].tipo);
+				printf("Permisos: %i\n",inodos[k].permisos);
+				printf("Nº enlaces: %i\n",inodos[k].nlinks);
+				printf("Bytes lógicos: %i\n",inodos[k].tamEnBytesLog);
+				printf("Bloques ocupados: %i\n",inodos[k].numBloquesOcupados);
+
+			}
+			
+			printf("\n");
+
+			j=-1;
+		}
+
+		j++;
+	}
 
 	printf("\nleer_sf: Desmontando el dispositivo...\n\n");
 
