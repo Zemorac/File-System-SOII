@@ -3,8 +3,7 @@
  * Descripción: Descripción de las funciones básicas de E/S de bloques
  * del sistema de ficheros.
  * 
- * Autor: Celia Caro 
- *		  Sebastián Elías Oporto 
+ * Autor: Zemorac 
  * Fecha: 10/02/16
  * 
  * */
