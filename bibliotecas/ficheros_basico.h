@@ -57,11 +57,13 @@ struct INODO{
 
 //FUNCIONES
 
+//ETAPA 2
 int tamMB (unsigned int nbloques);
 int tamAI (unsigned int ninodos);
 int initSB(unsigned int nbloques, unsigned int ninodos);
 int initMB();
 int initAI(unsigned int ninodos);
+//ETAPA 3
 int escribir_bit(unsigned int nbloque, unsigned int bit);
 unsigned char leer_bit(unsigned int nbloque);
 int reservar_bloque();
@@ -69,3 +71,9 @@ int liberar_bloque(unsigned int nbloque);
 int escribir_inodo(struct INODO inodo, unsigned int ninodo);
 struct INODO leer_inodo(unsigned int ninodo);
 int reservar_inodo(unsigned char tipo, unsigned char permisos);
+//ETAPA 4
+int obtener_rangoBL(struct INODO inodo, int nblogico, int *ptr);
+int obtener_indice(int nblogico, int nivel_punteros);
+int traducir_bloque_inodo(unsigned int ninodo, unsigned int blogico, char reservar);
+int liberar_bloques_inodo(unsigned int ninodo, unsigned int blogico);
+int liberar_inodo(unsigned int ninodo);

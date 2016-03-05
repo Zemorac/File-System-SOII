@@ -337,7 +337,7 @@ unsigned char leer_bit(unsigned int nbloque){
 /* Función reservar_bloque: Se encarga de buscar el primer 0 en el Mapa de Bits,
  * es decir, el primer bloque libre. Reserva el bloque libre escribiendo un 1 en
  * la posición del Mapa de bits y devuelve la posición del bloque (nº bloque que
- * hemos reservado = posíción lógica).
+ * hemos reservado = posición lógica).
  * 
  * Parámetros: (Ninguno)
  * 			
@@ -550,7 +550,7 @@ struct INODO leer_inodo(unsigned int ninodo){
 int reservar_inodo(unsigned char tipo, unsigned char permisos){
 
 	struct SUPERBLOQUE sb;
-	struct INODO bloqueInodo[BLOCKSIZE/T_INODO];
+	//struct INODO bloqueInodo[BLOCKSIZE/T_INODO];
 	struct INODO inodoAreservar;
 	unsigned int posInodoReservado;
 
@@ -605,5 +605,330 @@ int reservar_inodo(unsigned char tipo, unsigned char permisos){
  	return posInodoReservado;
 }
 
+/* Función obtener_rangoBL: Asocia un nivel a acada rango de bloques
+ * lógicos. Si podemos direccionar solo el primer conjunto de bloques 
+ * índices entonces rango = 1, si podemos hasta el segundo conjunto de 
+ * bloques índices entonces rango = 2 y si podemos hasta el tercer 
+ * conjunto de bloques índices entonces rango = 3. Para bloques directos 
+ * rango = 0.
+ * 
+ * Parámetros:
+ * 			-inodo 	 : inodo específico.
+ *			-nblogico: # bloque lógico.
+ * 			-*ptr	 : puntero a índices del inodo.
+ * 
+ * */
+int obtener_rangoBL(struct INODO inodo, int nblogico, int *ptr){
+	
+	unsigned int npunteros,rangoBL,directos,indirectos0,indirectos1,indirectos2;
+	
+	/* # punteros que caben en un bloque de tamaño BLOCKSIZE,
+	 * los bloques que contienen punteros son bloques índices.
+	 * En este caso 256.
+	 * */
+	npunteros = BLOCKSIZE/sizeof(int);
+	
+	//Cálculo de bloques que se pueden direccionar.
+	directos = T_DIRECTOS;
+	//Necesitan un solo bloque de índices. (268)
+	indirectos0 = directos + npunteros;
+	//Necesitan un bloque índice por cada índice del bloque de índices que es apuntado. (65.804)
+	indirectos1 = indirectos0 + (npunteros*npunteros); 
+	//Idem que el caso anterior pero con más bloques índices. (16.843.020)
+	indirectos2 =  indirectos1 + (npunteros*npunteros*npunteros);
+	
+	//Si nuestro bloque lógico pertenece a bloques lógicos directos...
+	if(nblogico<directos){
+		
+		//Proporcionamos el índice al bloque de datos.
+		*ptr = inodo.punterosDirectos[nblogico];
+		//Directos tendrán el rango 0.
+		rangoBL = 0; 
+	}
+	//Si nuestro bloque lógico pertenece a bloques lógicos indirectos...
+	else {
+		//de nivel 0:
+		if(nblogico<indirectos0){
+			//Proporcionamos el índice al primer bloque de índices.
+			*ptr = inodo.punterosIndirectos[0];
+			//Indirectos0 tendrán el rango 1.
+			rangoBL = 1;
+		}
+		else {
+			//de nivel 1:
+			if(nblogico<indirectos1){
+				//Proporcionamos el índice al primer bloque de índices.
+				*ptr = inodo.punterosIndirectos[1];
+				//Indirectos1 tendrán el rango 2.
+				rangoBL = 2;
+			}
+			else {
+				//de nivel 2:
+				if(nblogico<indirectos2){
+					//Proporcionamos el índice al primer bloque de índices.
+					*ptr = inodo.punterosIndirectos[2];
+					//Indirectos2 tendrán el rango 3.
+					rangoBL = 3;
+				}
+				else {
+					*ptr = 0; //NULL
+					rangoBL = -1;
+					printf("\nobtener_rangoBL(): ERROR, no existe el bloque lógico %i.\n",nblogico);
+				}
+			}
+		}
+	}
+	
+	return rangoBL;
+}
 
+/* Función obtener_indice: Se encarga de calcular los índices, que almacenan
+ * los bloques índice, que conectan con el bloque de datos.
+ * 
+ * Parámetros:
+ *			-nblogico: # bloque lógico.
+ * 			-nivel_punteros	 : nivel de punteros en el que tenemos que 
+ * 							   empezar el recorrido para traducir el 
+ * 							   lógico a físico.
+ * 
+ * Nota: Para ir obteniendo los índices se restan los bloques anteriores 
+ * para poder relativizar mejor, es decir, para que caiga siempre en el 
+ * rango de un bloque de punteros (0-255). Cada rango indirecto tiene
+ * niveles de bloques índice que se van recorriendo desde el nivel 3 hasta
+ * el nivel 1, 3->2->1(Datos). El número de niveles de bloques índice
+ * depende del rango actual.
+ * */
+int obtener_indice(int nblogico, int nivel_punteros){
+	
+	unsigned int npunteros, directos, indirectos0, indirectos1, indirectos2;
+	int indice;
+	
+	/* # punteros que caben en un bloque de tamaño BLOCKSIZE,
+	 * los bloques que contienen punteros son bloques índices.
+	 * En este caso 256.
+	 * */
+	npunteros = BLOCKSIZE/sizeof(int);
+	//Cálculo de bloques que se pueden direccionar.
+	directos = T_DIRECTOS;
+	//Necesitan un solo bloque de índices. (268)
+	indirectos0 = directos + npunteros;
+	//Necesitan un bloque índice por cada índice del bloque de índices que es apuntado. (65.804)
+	indirectos1 = indirectos0 + (npunteros*npunteros); 
+	//Idem que el caso anterior pero con más bloques índices. (16.843.020)
+	indirectos2 =  indirectos1 + (npunteros*npunteros*npunteros);
+	
+	// Si el índice esta en el bloque de directos.
+	if(nblogico < directos){ 
+		
+		indice = nblogico;
+	}
+	
+	else{ // Si no está entre los bloques de directos...
+		
+		if(nblogico < indirectos0){ // Si está en el indirectos 0.
+			//Solo tiene un nivel, nivel 1, de bloques índice.
+			indice = nblogico-directos;
+		}
+		
+		else{
+		
+		if(nblogico < indirectos1){ // Si está en el indirectos1
+			//Solo tiene dos niveles, 2->1, de bloques índice.
+			if(nivel_punteros == 2){ // Si está en el nivel 2.
+				
+				indice = (nblogico-indirectos0)/npunteros;
+			}
+			else{
+				
+				if(nivel_punteros == 1){ // Si está en el nivel 1.
+					
+					indice = (nblogico-indirectos0)%npunteros;
+					
+				}
+			}
+		}
+		else{
+			
+			if(nblogico < indirectos2){ // Si está en el indirectos2.
+				//Solo tiene 3 niveles, 3->2->1, de bloques índice.
+				/*(npunteros*npunteros) = 256², no es 256, ya que
+				 * necesitamos otro bloque de índice para direccionar
+				 * 3 niveles de bloques índice. Para el nivel 2 solo
+				 * nos bastaba con el cociente y el resto de 256.
+				 * */
+				if(nivel_punteros == 3){ // Si está en el nivel 3.
 
+					indice = (nblogico-indirectos1)/(npunteros*npunteros);
+					
+				}
+				
+				else{
+					
+					if(nivel_punteros == 2){ // Si está en el nivel 2.
+						/*Como ahora estamos en el nivel 2, ya podemos
+						 * dividir entre 256(npunteros), como en el caso
+						 * de indirectos1.
+						 * */
+						indice = ((nblogico-indirectos1)%(npunteros*npunteros))/npunteros;
+						
+					}
+					else{
+						//Solo hacemos el resto, como en el caso de indirectos1.
+						if(nivel_punteros == 1){ // Si está en el nivel 1.
+							
+							indice = ((nblogico-indirectos1)%(npunteros*npunteros))%npunteros;
+							
+						}
+					}
+				}
+			}
+		}
+	}
+		
+	}
+	
+	return indice;
+}
+
+/* Función traducir_bloue_inodo: Se encarga de obtener un bloque físico
+ * a partir de un bloque lógico del inodo especificado.
+ * 
+ * Parámetros:
+ * 			-ninodo		: # inodo al que pertenece el bloque lógico.
+ *			-blogico	: bloque lógico a traducir.
+ * 			-reservar	: indica el fin de la función, 0 consultar y 1
+ * 						  consultar y en caso de que no exista el bloque
+ * 						  físico reservarlo.
+ * 
+ * */
+int traducir_bloque_inodo(unsigned int ninodo, unsigned int blogico, char reservar){
+	
+	//Se lee el inodo
+	struct INODO inodo = leer_inodo(ninodo);
+	int ptr,ptr_ant,salvar_inodo,rango,nivel_punteros = 0;
+	unsigned int bloque_indice[BLOCKSIZE/sizeof(int)];
+	
+	/*Obtenemos el número de rango en el que nos encontramos según el bloque lógico y 
+	 *se asigna a ptr el valor del puntero correspondiente del inodo.
+	 * */
+	rango = obtener_rangoBL(inodo,blogico,&ptr);
+	//Asignamos a nivel_punteros el número de rango del  bloque logico
+	nivel_punteros = rango; // Valor inicial: 3->2->1.
+
+	//Mientras estemos en un nivel de punteros indirectos.
+	while(nivel_punteros > 0){ 
+		//En el caso de que no hayan bloques que cuelguen del puntero...
+		if(ptr == 0){
+			/* Si reservar vale 0, usamos esta función solo para consultar.
+			 * Por lo tanto solo devolvemos error.
+			 * */
+			if(reservar == '0'){ 
+				
+				printf("\ntraducir_bloque_inodo(): ERROR, no existe bloque físico para el bloque lógico %i.\n",blogico);
+			
+			}
+			//Construimos la estructura...
+			else { 
+				//Indicamos que el inodo se ha de modificar y reescribir en el dispositivo.
+				salvar_inodo = 1; 
+				//Reservamos un bloque libre.	
+				ptr = reservar_bloque();	
+				if(ptr<0){
+					
+					printf("\ntraducir_bloque_inodo(): ERROR, no ha sido posible realizar la reserva de un bloque.\n");
+				
+					return -1;
+				}
+				//Llenamos el buffer de 0's para luego poder escribir en el dispositivo un bloque índice vacío.
+				memset(bloque_indice,0,BLOCKSIZE/sizeof(int));
+				//Como ptr!=0 podemos colgar un bloque de índices de él.
+				bwrite(ptr,bloque_indice);
+				inodo.numBloquesOcupados++;
+				// Actualizamos el ctime
+				localtime(&inodo.ctime);
+				//Si el nuevo bloque de punteros cuelga directamente del inodo...
+				if(rango == nivel_punteros){
+					//Actualizamos el puntero correspondiente del inodo para que apunte a ptr.
+					inodo.punterosIndirectos[rango-1] = ptr;
+					
+				}//Sino el nuevo bloque de punteros cuelga directamente de otro bloque de punteros...
+				else{
+					//Leemos el bloque índice anterior.
+					bread(ptr_ant,bloque_indice);
+					//Ponemos el puntero en el índice del bloque de índices.
+					bloque_indice[obtener_indice(ptr_ant,nivel_punteros)] = ptr;
+					//Escribimos en el dispositivo el bloque modificado.
+					bwrite(ptr_ant,bloque_indice);
+				}
+			}		
+		}
+		bread(ptr,bloque_indice);
+		int indice = obtener_indice(ptr,nivel_punteros);
+		ptr_ant = ptr;
+		//Para saber cuál es el siguiente bloque.
+		ptr = bloque_indice[indice];
+		//Vamos construyendo los bloques intermedios y sus enlaces desde el inodo hasta los bloques de datos.
+		nivel_punteros--;
+	}
+	//Trata del nivel_punteros = 1 --> bloques de datos.
+	if(ptr == 0){//Si no cuelga del bloque índice nada...
+		
+		if(reservar == '0'){
+			
+			printf("\ntraducir_bloque_inodo(): ERROR, no existe bloque físico para el bloque lógico %i.\n",blogico);
+			
+			return -1;
+		}
+		else{
+			//Actualizaremos el inodo.
+			salvar_inodo = 1;
+			//Reservamos un bloque libre.		
+			ptr = reservar_bloque();	
+			if(ptr<0){
+					
+				printf("\ntraducir_bloque_inodo(): ERROR, no ha sido posible realizar la reserva de un bloque de datos.\n");
+				
+				return -1;
+			}
+			
+			inodo.numBloquesOcupados++;
+			// Actualizamos el ctime
+			localtime(&inodo.ctime);
+			
+			//Si es un bloque de datos que cuelga de un puntero directo...
+			if(rango == 0){
+				
+				inodo.punterosDirectos[blogico] = ptr;
+				
+			}//Sino es un bloque de datos que cuelga de un bloque de índices.
+			else{
+				
+				//Leemos el bloque índice anterior.
+				bread(ptr_ant,bloque_indice);
+				//Ponemos el puntero en el índice del bloque de índices.
+				bloque_indice[obtener_indice(ptr_ant,nivel_punteros)] = ptr;
+				//Escribimos en el dispositivo el bloque modificado.
+				bwrite(ptr_ant,bloque_indice);
+						
+			}
+			
+		}
+	
+	}
+	
+	//Si hay que reescribir el inodo...
+	if(salvar_inodo == 1)escribir_inodo(inodo,ninodo);
+		
+	//Devolvemos el nº de bloque físico del bloque lógico parametrizado.
+	
+	return ptr;
+}
+
+int liberar_bloques_inodo(unsigned int ninodo, unsigned int blogico){
+	return 0;
+}
+
+int liberar_inodo(unsigned int ninodo){//Esta funcion llamara a liberar_bloques_inodo
+	
+	return 0;
+}
