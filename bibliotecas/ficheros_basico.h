@@ -75,5 +75,7 @@ int reservar_inodo(unsigned char tipo, unsigned char permisos);
 int obtener_rangoBL(struct INODO inodo, int nblogico, int *ptr);
 int obtener_indice(int nblogico, int nivel_punteros);
 int traducir_bloque_inodo(unsigned int ninodo, unsigned int blogico, char reservar);
-int liberar_bloques_inodo(unsigned int ninodo, unsigned int blogico);
+int liberar_bloques_inodo(unsigned int ninodo, unsigned int blogico,int ptr,int rangoBL,int nivel);
 int liberar_inodo(unsigned int ninodo);
+int eliminar_bloque_indice(int nivel,unsigned int ninodo,struct SUPERBLOQUE *sb,struct INODO *inodo, int ptr, int *rango,int ptr_ant,unsigned int blogico);
+int preservar_bloque(unsigned int blogico,unsigned int *bloque_indice, int ptr, unsigned int ninodo,int rango,int nivel);

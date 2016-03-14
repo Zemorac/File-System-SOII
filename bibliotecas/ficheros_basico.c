@@ -3,7 +3,7 @@
  * Descripción: Definición de las funciones de la zona de metadatos
  * del sistema de ficheros.
  * 
- * Autor: Zemorac
+ * Autor: Zemorac 
  * Fecha: 17/02/16
  * 
  * */
@@ -717,7 +717,7 @@ int obtener_indice(int nblogico, int nivel_punteros){
 	//Idem que el caso anterior pero con más bloques índices. (16.843.020)
 	indirectos2 =  indirectos1 + (npunteros*npunteros*npunteros);
 	
-	// Si el índice esta en el bloque de directos.
+	// Si el índice está en el bloque de directos.
 	if(nblogico < directos){ 
 		
 		indice = nblogico;
@@ -790,7 +790,7 @@ int obtener_indice(int nblogico, int nivel_punteros){
 	return indice;
 }
 
-/* Función traducir_bloue_inodo: Se encarga de obtener un bloque físico
+/* Función traducir_bloque_inodo: Se encarga de obtener un bloque físico
  * a partir de un bloque lógico del inodo especificado.
  * 
  * Parámetros:
@@ -924,11 +924,333 @@ int traducir_bloque_inodo(unsigned int ninodo, unsigned int blogico, char reserv
 	return ptr;
 }
 
-int liberar_bloques_inodo(unsigned int ninodo, unsigned int blogico){
-	return 0;
-}
 
-int liberar_inodo(unsigned int ninodo){//Esta funcion llamara a liberar_bloques_inodo
+/* Función liberar_bloques_inodo:Se encarga de eliminar todos los bloques ocupados del inodo
+ * a partir del bloque lógico parametrizado inclusive hasta el último bloque
+ * lógico del inodo = (inodo.tamEnBytesLog/BLOCKSIZE). .
+ * 
+ * Parámetros: 
+ * 			-ninodo		: # inodo al que borraremos los bloques.
+ *			-blogico	: bloque lógico a partir del que hay que empezar a borrar.
+ * 
+ * */
+int liberar_bloques_inodo(unsigned int ninodo,unsigned int blogico,int ptr,int rango,int nivel){
+	
+	unsigned int mascara[BLOCKSIZE];
+	struct SUPERBLOQUE sb;
+	struct INODO inodo;
+	unsigned int ultimoBloqueInodo;
+	unsigned int bloque_indice[BLOCKSIZE/sizeof(int)];
+	int indice;
+	//Leemos el Superbloque
+	if(bread(posSB,&sb)<0){
+
+		printf("\nliberar_bloques_inodo(): ERROR, no se ha leído el SUPERBLOQUE.\n");
+
+		return -1;
+	}
+	//Leemos el inodo
+	inodo = leer_inodo(ninodo);
+	ultimoBloqueInodo = inodo.tamEnBytesLog/BLOCKSIZE;
+	//Rellenamos mascara de 0's para saber posteriormente si quedan índices apuntando.
+	memset(mascara,0,BLOCKSIZE/sizeof(int));//máscara
+	
+	//Caso trivial.
+	if(blogico == ultimoBloqueInodo){
+		//Escribimos el inodo actualizado
+		escribir_inodo(inodo,ninodo);
+		//Actualizamos el SUPERBLOQUE
+		if(bwrite(posSB,&sb)<0){
+
+			printf("\nreservar_inodo(): ERROR, no se ha actualizado el SUPERBLOQUE.\n");
+
+			return -1;
+		}
+		
+		return ninodo;
+	}
+	
+	//Para los punteros directos borramos el bloque de datos directamente...
+	if(rango == 0){
+		indice = obtener_indice(blogico,0);
+		//Liberamos el bloque de datos
+		liberar_bloque(inodo.punterosDirectos[indice]);
+		//Tenemos un bloque libre más.
+		sb.cantBloquesLibres++;
+		//Ponemos a 0 el puntero directo al bloque de datos
+		inodo.punterosDirectos[indice] = 0;
+		//Decrementamos el nº de bloques ocupados
+		inodo.numBloquesOcupados--;
+		//Actualizamos el ctime
+		localtime(&inodo.ctime);
+		//Pasamos al siguiente bloque lógico
+		blogico++;
+		//Para saber si hay que saltar a otro rango.
+		rango = obtener_rangoBL(inodo,blogico,&ptr);
+		//Obtenemos el indice, en este caso ptr = indice.
+		indice = obtener_indice(blogico,0);
+		/* En el caso de los punteros directos tenemos el rango 0, pero
+		 * si resulta que ya el rango no es cero sino 1, ya hay un nivel 
+		 * de bloques índices.
+		 * */
+		if(rango == 1){
+			nivel = rango;
+			indice = obtener_indice(blogico,nivel);
+		}
+		//Liberamos el siguiente bloque.
+		if(liberar_bloques_inodo(ninodo,blogico,ptr,rango,nivel)<0){
+			printf("\nliberar_bloques_inodo(): ERROR, ha ocurrido un problema al intentar borrar el bloque %i.\n",blogico);
+			return -1;
+		}
+	}
+	
+	//Para los punteros indirectos tratamos los bloques índice...
+	//Si no estamos a nivel de datos...
+	if(nivel!=0){
+		//Si el bloque índice existe...
+		if(ptr>0){
+			//Leemos el bloque de punteros.
+			if(bread(ptr,bloque_indice)<0){
+				
+				printf("\nliberar_bloques_inodo(): ERROR, no se ha podido leer un bloque índice.\n");		
+							
+				return -1;
+			}
+			//Obtenemos el índice en ese bloque.
+			indice = obtener_indice(ptr,nivel);
+
+			if(nivel == 3){
+				//Para cambiar de nivel.
+				nivel--;
+				int bloque_indice_3 = ptr;
+				//Calculamos el ptr siguiente.
+				ptr = bloque_indice[indice];
+			    if(liberar_bloques_inodo(ninodo,blogico,ptr,rango,nivel)<0){
+					printf("\nliberar_bloques_inodo(): ERROR, ha ocurrido un problema al intentar borrar el bloque %i.\n",blogico);
+					return -1;
+				}
+				//Ahora borrar hacia atrás según rango.
+				nivel++;
+				//Ponemos a 0 el puntero al bloque de índices de nivel 2.
+				bloque_indice[indice] = 0;
+				//Si no quedan punteros ocupados en el bloque índice de nivel 3
+				if(memcmp(bloque_indice,mascara,BLOCKSIZE/sizeof(int)) == 0){
+					if(eliminar_bloque_indice(nivel,ninodo,&sb,&inodo,ptr,&rango,bloque_indice_3,blogico)<0){
+						printf("\nliberar_bloques_inodo(): ERROR, no se ha podido eliminar el bloque índice.\n");
+						return -1;
+					}
+				}else{
+					if(preservar_bloque(blogico,bloque_indice,ptr,ninodo,rango,nivel)<0){
+						
+						printf("\nliberar_bloques_inodo(): ERROR, no se ha podido preservar el bloque índice.\n");
+						return -1;		
+					}
+				}
+
+			}
+			
+			if(nivel == 2){
+				//Para cambiar de nivel.
+				nivel--;
+				int bloque_indice_2 = ptr;
+				//Calculamos el ptr siguiente.
+				ptr = bloque_indice[indice];
+			    if(liberar_bloques_inodo(ninodo,blogico,ptr,rango,nivel)<0){
+					
+					printf("\nliberar_bloques_inodo(): ERROR, ha ocurrido un problema al intentar borrar el bloque %i.\n",blogico);
+					return -1;
+				}
+				//Ahora borrar hacia atrás según rango.
+				nivel++;
+				//Ponemos a 0 el puntero al bloque de índices de nivel 1.
+				bloque_indice[indice] = 0;
+				//Si no quedan punteros ocupados en el bloque índice de nivel 2
+				if(memcmp(bloque_indice,mascara,BLOCKSIZE/sizeof(int)) == 0){
+					
+					if(eliminar_bloque_indice(nivel,ninodo,&sb,&inodo,ptr,&rango,bloque_indice_2,blogico)<0){
+						printf("\nliberar_bloques_inodo(): ERROR, no se ha podido eliminar el bloque índice.\n");
+						return -1;
+					}
+				}else{
+					if(preservar_bloque(blogico,bloque_indice,ptr,ninodo,rango,nivel)<0){
+						
+						printf("\nliberar_bloques_inodo(): ERROR, no se ha podido preservar el bloque índice.\n");
+						return -1;		
+					}
+				}
+			}
+			
+			if(nivel == 1){
+				//Tratamos el bloque de datos
+				if(bloque_indice[indice]>0){//Existe el bloque de datos
+					//Liberamos el bloque de datos
+					liberar_bloque(bloque_indice[indice]);
+					//Ponemos a 0 el puntero directo al bloque de datos
+					bloque_indice[indice] = 0;
+					//Tenemos un bloque libre más.
+					sb.cantBloquesLibres++;
+					//Decrementamos el nº de bloques ocupados
+					inodo.numBloquesOcupados--;
+					//Actualizamos el ctime
+					localtime(&inodo.ctime);
+				}
+				//Si no quedan punteros ocupados en el bloque índice de nivel 1
+				if(memcmp(bloque_indice,mascara,BLOCKSIZE/sizeof(int)) == 0){
+					if(eliminar_bloque_indice(nivel,ninodo,&sb,&inodo,ptr,&rango,ptr,blogico)<0){
+						
+						printf("\nliberar_bloques_inodo(): ERROR, no se ha podido eliminar el bloque índice.\n");
+						return -1;
+					}
+
+				}else{
+					if(preservar_bloque(blogico,bloque_indice,ptr,ninodo,rango,nivel)<0){
+						printf("\nliberar_bloques_inodo(): ERROR, no se ha podido preservar el bloque índice.\n");
+						return -1;		
+					}
+				}
+			}
+			
+		}else{
+			
+			printf("\nliberar_bloques_inodo(): ERROR, no existe el bloque a acceder.\n");
+			
+			return -1;
+		}
+	}
 	
 	return 0;
 }
+/* Función eliminar_bloque_indice:Se encarga de eliminar el bloque índice.
+ * En cada condicional se encarga de cambiar el rango si es necesario y poner
+ * el puntero del inodo al bloque indice de nivel 3, 2 o 1 a cero.
+ * 
+ * Parámetros:(Provienen de la función liberar_bloques_inodo().)
+ * 
+ * */
+int eliminar_bloque_indice(int nivel,unsigned int ninodo,struct SUPERBLOQUE *sb,struct INODO *inodo, int ptr, int *rango,int ptr_ant,unsigned int blogico){
+	
+		//Liberamos el bloque de punteros del nivel que toque.
+		liberar_bloque(ptr_ant);
+		//Decrementamos el nº de bloques ocupados.
+		(*inodo).numBloquesOcupados--;
+		(*sb).cantBloquesLibres++;
+		//Actualizamos el inodo.
+		localtime(&(*inodo).ctime);
+		if(nivel == 3){
+			if(*rango == 3){
+			//Poner a 0 el puntero del inodo a ese bloque.
+			(*inodo).punterosIndirectos[*rango-1] = 0;
+			blogico++;
+				//Llamamos a la función y caso trivial.
+				if(liberar_bloques_inodo(ninodo,blogico,ptr,*rango,nivel)<0){
+					printf("\neliminar_bloque_indice(): ERROR, ha ocurrido un problema al intentar borrar el bloque %i.\n",blogico);
+					return -1;
+				}
+			}
+		}
+		else if (nivel == 2){
+			if(*rango == 2){
+				//Poner a 0 el puntero del inodo a ese bloque.
+				(*inodo).punterosIndirectos[*rango-1] = 0;
+				*rango = obtener_rangoBL(*inodo,blogico+1,&ptr);
+				if(*rango == 3)nivel = *rango;
+					//Llamamos a la función y caso trivial.
+					if(liberar_bloques_inodo(ninodo,blogico+1,ptr,*rango,nivel)<0){
+						printf("\neliminar_bloque_indice(): ERROR, ha ocurrido un problema al intentar borrar el bloque %i.\n",blogico);
+						return -1;
+					}
+				}
+		}
+		else if(nivel == 1){
+			if(*rango == 1){
+				(*inodo).punterosIndirectos[*rango-1] = 0;
+				//Si tenemos que cambiar de rango...
+				*rango = obtener_rangoBL(*inodo,blogico+1,&ptr);
+				if(*rango == 2)nivel = *rango;
+					//Llamamos a la función.
+					if(liberar_bloques_inodo(ninodo,blogico+1,ptr,*rango,nivel)<0){
+						printf("\neliminar_bloque_indice(): ERROR, ha ocurrido un problema al intentar borrar el bloque %i.\n",blogico);
+						return -1;
+					}
+						
+				}
+		}
+	
+	return 0;
+}
+
+/* Función preservar_bloque:Se encarga de preservar el bloque de índices
+ * y en caso de que rango = nivel, es decir, ya se pueda volver a liberar
+ * otro bloque, se llama a la función liberar_bloques_inodo().
+ * 
+ * Parámetros:(Provienen de la función liberar_bloques_inodo().)
+ * 
+ * */
+int preservar_bloque(unsigned int blogico,unsigned int *bloque_indice, int ptr, unsigned int ninodo,int rango,int nivel){
+	//Preservamos el bloque de índices.
+	if(bwrite(ptr,bloque_indice)<0){
+						
+		printf("\nliberar_bloques_inodo(): ERROR, no se ha podido escribir un bloque índice.\n");		
+							
+		return -1;
+	}
+	if(rango == nivel){
+		//Liberamos el siguiente bloque...
+		if(liberar_bloques_inodo(ninodo,blogico+1,ptr,rango,nivel)<0){
+			printf("\nliberar_bloques_inodo(): ERROR, ha ocurrido un problema al intentar borrar el bloque %i.\n",blogico);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+/* Función eliminar_inodo:Se encarga de eliminar todos los bloques que 
+ * componen al inodo. Retorna el nº de inodo liberado.
+ * 
+ * Parámetros:
+ * 			  -ninodo: # de inodo a borrar. 	
+ * */
+int liberar_inodo(unsigned int ninodo){
+	
+	struct INODO inodo;
+	struct SUPERBLOQUE sb;
+	int ptr;
+	int nivel,blogico,rangoBL;
+	
+	//Leemos el inodo para liberarlo...
+	inodo = leer_inodo(ninodo);
+	//Borramos el inodo completamente.
+	blogico = 0;
+	nivel = 0;
+	rangoBL = obtener_rangoBL(inodo,blogico,&ptr);
+
+	if(liberar_bloques_inodo(ninodo,blogico,ptr,rangoBL,nivel)<0){
+		
+		printf("\nliberar_bloques_inodo(): ERROR, ha ocurrido un problema al liberar el inodo %i.\n",ninodo);
+		
+		return -1;
+	}
+	//Leemos el inodo actualizado.
+	inodo = leer_inodo(ninodo);
+	inodo.tipo = 'l';
+	//Leemos el SUPERBLOQUE.
+	if(bread(posSB,&sb)<0){
+
+		printf("\nliberar_bloques_inodo(): ERROR, no se ha leído el SUPERBLOQUE.\n");
+
+		return -1;
+	}
+	sb.posPrimerInodoLibre = ninodo;
+	sb.cantInodosLibres++;
+	//Actualizamos el SUPERBLOQUE y el INODO
+	escribir_inodo(inodo,ninodo);
+	if(bwrite(posSB,&sb)<0){
+
+		printf("\nreservar_inodo(): ERROR, no se ha actualizado el SUPERBLOQUE.\n");
+
+		return -1;
+	}
+	
+	return ninodo;
+}
+
