@@ -32,10 +32,10 @@ int main(int argc, char **argv){
 		return -1;
 	}
 		
-	/*ETAPA 1:
+	//ETAPA 1:
 	unsigned char buf[BLOCKSIZE];
 	//Rellenamos de 0's el buffer.
-	memset(buf,0,BLOCKSIZE);*/
+	memset(buf,0,BLOCKSIZE);
 	
 	//Montamos el dispositivo.
 	printf("\nmi_mkfs: Montando el dispositivo...\n");	
@@ -43,22 +43,22 @@ int main(int argc, char **argv){
 	printf("\nmi_mkfs: El dispositivo se ha montado con éxito.\n");
 	printf("\nmi_mkfs: Realizando escritura...\n");
 		
+	
+	//ETAPA 1:
+	//Escribimos todos los bloques en el dispositivo.
+	for(int i=0; i<numBloques; i++){
+		bwrite(i,buf);
+	}
+	
 	if(initSB(numBloques,ninodos)<0)return -1;
 	if(initMB()<0)return -1;
 	if(initAI(ninodos)<0)return -1;
 
 	//Se escribe el directorio raíz = inodo raíz.
 	reservar_inodo('d',7);
-	
-	/*ETAPA 1:
-	//Escribimos todos los bloques en el dispositivo.
-	for(int i=0; i<numBloques; i++){
-		bwrite(i,buf);
-	}
-	*/
 
 	//Desmontamos el dispositivo.
-	printf("\nmi_mkfs: Desmontando el dispositivo.\n");
+	printf("\nmi_mkfs: Desmontando el dispositivo...\n");
 	bumount();
 	
 	printf("\nmi_mkfs: Dispositivo desmontado con éxito.\n");

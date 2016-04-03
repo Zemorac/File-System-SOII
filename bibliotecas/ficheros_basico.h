@@ -55,6 +55,20 @@ struct INODO{
 
 };
 
+struct STAT{
+	unsigned char tipo; //Tipo (libre, directorio o fichero)
+	unsigned char permisos; //Permisos (lectura y/o escritura y/o ejecución)
+	unsigned char reservado_alineacion1 [6];
+
+	time_t atime; //Fecha y hora del último acceso a datos: atime
+	time_t mtime; //Fecha y hora de la última modificación de datos: mtime
+	time_t ctime; //Fecha y hora de la última modificación del inodo: ctime
+
+	unsigned int nlinks; //Cantidad de enlaces de entradas en directorio
+	unsigned int tamEnBytesLog; //Tamaño en bytes lógicos
+	unsigned int numBloquesOcupados; //Cantidad de bloques ocupados en la zona de datos
+};
+
 //FUNCIONES
 
 //ETAPA 2
@@ -72,10 +86,10 @@ int escribir_inodo(struct INODO inodo, unsigned int ninodo);
 struct INODO leer_inodo(unsigned int ninodo);
 int reservar_inodo(unsigned char tipo, unsigned char permisos);
 //ETAPA 4
-int obtener_rangoBL(struct INODO inodo, int nblogico, int *ptr);
-int obtener_indice(int nblogico, int nivel_punteros);
+int obtener_rangoBL(struct INODO inodo, unsigned int nblogico,int *ptr);
+int obtener_indice(unsigned int nblogico, int nivel_punteros);
 int traducir_bloque_inodo(unsigned int ninodo, unsigned int blogico, char reservar);
 int liberar_bloques_inodo(unsigned int ninodo, unsigned int blogico,int ptr,int rangoBL,int nivel);
 int liberar_inodo(unsigned int ninodo);
-int eliminar_bloque_indice(int nivel,unsigned int ninodo,struct SUPERBLOQUE *sb,struct INODO *inodo, int ptr, int *rango,int ptr_ant,unsigned int blogico);
+int eliminar_bloque_indice(int nivel,unsigned int ninodo,struct SUPERBLOQUE *sb,struct INODO *inodo, int ptr, int *rango, int ptr_ant,unsigned int blogico);
 int preservar_bloque(unsigned int blogico,unsigned int *bloque_indice, int ptr, unsigned int ninodo,int rango,int nivel);

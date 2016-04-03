@@ -99,9 +99,8 @@ int bread(unsigned int nbloque, void *buf){
 	//El punto de referencia es el inicio del fichero + llamada al sistema.
 	lseek(descriptor,desplazamiento, SEEK_SET);
 	//Leemos = llamada al sistema. 
-	if(read(descriptor,buf, BLOCKSIZE)<0){
-		printf("bread: Se ha producido un error en la lectura de un bloque en el dispositivo.\n");
-		
+	if(read(descriptor,buf,BLOCKSIZE)<0){
+		printf("bread(): Se ha producido un error en la lectura de un bloque en el dispositivo.\n");
 		return -1;
 	}
 	
